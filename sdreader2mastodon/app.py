@@ -83,19 +83,30 @@ def get_events(soup, settings):
             urllib.parse.urlparse(full_url).path,
         )
 
+        tags = [
+            filter_element.get_text().strip().lower()
+            for filter_element in el.find_all('a', attrs={'class': 'event-type'})
+        ]
+
         return Event(
             title=title_element.get_text().strip(),
             url=cleaned_url,
             location=place_element.get_text().strip(),
             date=date,
             time=time_element.get_text().strip(),
+            tags=[tag for tag in tags if tag != 'music'],
         )
 
     return [make_event(el, date) for el in event_elements]
 
 
 def post(event, settings: Settings):
-    status = f'{event.title}\n{event.date}, {event.time} @ {event.location}\n{settings.extra_hashtags}\n\n{event.url}'
+    hashtags = ' '.join([f'#{tag}' for tag in event.tags])
+    status = (
+        f'{event.title}\n{event.date}, {event.time} @ {event.location}\n'
+        f'{hashtags} {settings.extra_hashtags}\n\n{event.url}'
+    )
+
     key = md5(status.encode('utf-8')).hexdigest()
 
     response = httpx.post(
@@ -155,6 +166,7 @@ def main():
         else:
             logger.debug(f'Posting {event.title}...')
             i += 1
+#             print(event)
             post(event, settings)
             cache.posts.append(event.url)
     set_cache(cache, settings)

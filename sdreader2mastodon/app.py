@@ -29,9 +29,6 @@ class Settings:
     mastodon_api_url: str
     reader_base_url: str
     reader_event_url_template: str
-    categories: [str]
-    start_date: str
-    end_date: str
     n: int = 1
     cache_filename: str = 'cache.json'
     extra_hashtags: str = '#sandiegolivemusic #sandiego #livemusic'

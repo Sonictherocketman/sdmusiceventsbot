@@ -145,7 +145,9 @@ def main():
 
     logger.info(f'Found {len(events)} total events. Posting: {settings.n}')
     i = 0
-    for event in random.shuffle(events):
+
+    random.shuffle(events)
+    for event in events:
         if i >= settings.n:
             break
         elif event.url in cache.posts:

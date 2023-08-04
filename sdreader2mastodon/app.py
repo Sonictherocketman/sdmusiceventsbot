@@ -127,7 +127,7 @@ def set_cache(cache: Cache, settings: Settings):
         return json.dump(cache.__dict__, f)
 
 
-def get_settings(args):
+def get_settings():
     return Settings(
         mastodon_api_token=os.environ['BOT_MASTODON_API_TOKEN'],
         mastodon_api_url=os.environ['BOT_MASTODON_API_URL'],

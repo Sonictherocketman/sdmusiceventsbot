@@ -1,6 +1,6 @@
 import argparse
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timedelta
 from hashlib import md5
 import json
 import logging
@@ -10,6 +10,9 @@ import urllib.parse
 
 from bs4 import BeautifulSoup
 import httpx
+
+
+USER_AGENT = 'sdmusiceventsbot@mastodon.social (Music Events Bot) v1.0'
 
 
 logging.basicConfig(
@@ -29,7 +32,7 @@ class Settings:
     mastodon_api_url: str
     reader_base_url: str
     reader_event_url_template: str
-    n: int = 1
+    n: int = 100
     cache_filename: str = 'cache.json'
     extra_hashtags: str = '#sandiegolivemusic #sandiego #livemusic'
 
@@ -46,25 +49,34 @@ class Event:
 
 
 def get_events_url(settings: Settings):
-    today = datetime.now().strftime('%Y-%m-%d')
+    today = datetime.now()
+    start_date = (today + timedelta(days=1)).strftime('%Y-%m-%d')
+    end_date = (today + timedelta(days=5)).strftime('%Y-%m-%d')
     return settings.reader_event_url_template.replace(
         '{start_date}',
-        today,
+        start_date,
     ).replace(
         '{end_date}',
-        today,
+        end_date,
     )
 
 
 def get_soup(url, settings):
-    response = httpx.get(url)
+    response = httpx.get(
+        url,
+        headers={'User-Agent': USER_AGENT}
+    )
     response.raise_for_status()
     return BeautifulSoup(response.text, 'html.parser')
 
 
 def get_events(soup, settings):
-    event_elements = soup.find_all('div', attrs={'class': 'event-item'})
-    events_block = soup.find('div', attrs={'class': 'events-date'})
+    events_blocks = soup.find_all('div', attrs={'class': 'events-date'})
+    # There could be multiple events-date blocks (for multiple day searches).
+    # We just select a random one for use here.
+    events_block = random.choice(events_blocks)
+
+    event_elements = events_block.find_all('div', attrs={'class': 'event-item'})
     date_element = events_block.find('h2')
     date = date_element.get_text().strip()
 
@@ -114,6 +126,7 @@ def post(event, settings: Settings):
         headers={
             'Authorization': f'Bearer {settings.mastodon_api_token}',
             'Idempotency-Key': key,
+            'User-Agent': USER_AGENT,
         },
         data={
             'status': status,
@@ -166,7 +179,6 @@ def main():
         else:
             logger.debug(f'Posting {event.title}...')
             i += 1
-#             print(event)
             post(event, settings)
             cache.posts.append(event.url)
     set_cache(cache, settings)
